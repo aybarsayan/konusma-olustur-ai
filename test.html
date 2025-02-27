@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Health Analysis Generator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        textarea {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0 15px;
+            min-height: 300px;
+            font-family: monospace;
+            font-size: 14px;
+        }
+
+        #output {
+            white-space: pre-wrap;
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-top: 20px;
+            min-height: 200px;
+            font-family: monospace;
+            background-color: #f5f5f5;
+        }
+
+        button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        .loading {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>AI4Sports Analysis Generator</h1>
+
+    <textarea id="inputData" placeholder="Paste your JSON data here" required></textarea>
+
+    <button onclick="generateAnalysis()" id="analyzeBtn">Generate Analysis</button>
+    <div id="output"></div>
+
+    <script>
+        // Sayfa yüklendiğinde örnek veriyi textarea'ya yerleştir
+        document.getElementById('inputData').value = JSON.stringify({
+            "language": "Türkçe",
+            "sport": "Football",
+            "data": {
+                "value": {
+                    // Buraya örnek veri gelecek
+                }
+            }
+        }, null, 2);
+
+        async function generateAnalysis() {
+            const output = document.getElementById('output');
+            const analyzeBtn = document.getElementById('analyzeBtn');
+            const inputData = document.getElementById('inputData');
+
+            output.textContent = ''; // Clear previous output
+            analyzeBtn.disabled = true;
+            analyzeBtn.classList.add('loading');
+
+            try {
+                let inputJson = JSON.parse(inputData.value);
+
+                const response = await fetch('http://localhost:3000/analiz/test', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(inputJson)
+                });
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    const chunk = decoder.decode(value);
+                    const lines = chunk.split('\n');
+
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            try {
+                                const data = JSON.parse(line.slice(6));
+                                if (data.content) {
+                                    output.textContent += data.content;
+                                }
+                            } catch (error) {
+                                console.error('Error parsing JSON:', error);
+                            }
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                output.textContent = 'An error occurred while fetching the response: ' + error.message;
+            } finally {
+                analyzeBtn.disabled = false;
+                analyzeBtn.classList.remove('loading');
+            }
+        }
+
+    </script>
+</body>
+
+</html>
